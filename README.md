@@ -81,4 +81,4 @@ Aura is pre-configured to build and run on Vercel as a monorepo via `vercel.json
     Link your GitHub repository to Vercel. Vercel will discover `vercel.json` and build the React app and Python APIs.
 3.  **Set Environment Variables in Vercel**:
     *   `GROQ_API_KEY`: Your Groq API credentials.
-    *   `DATABASE_URL`: In serverless deployments, file-based SQLite is read-only. Create a remote database (e.g. Vercel Postgres, Neon Postgres, or a cloud SQLite service like Turso) and set its connection URI here.
+    *   `DATABASE_URL`: Set this to `sqlite:////tmp/aura.db` to use SQLite within Vercel's writeable `/tmp/` directory (note: container recycles will reset logs). To store logs permanently, set a persistent remote database connection string (e.g. Postgres or Turso). *Aura automatically falls back to `/tmp/aura.db` in Vercel if this variable is left unset.*
