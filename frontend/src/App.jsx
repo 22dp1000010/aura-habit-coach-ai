@@ -32,13 +32,26 @@ const getTodayString = () => {
 };
 
 export default function App() {
-  // Navigation & General state
+  // Navigation & General state loaded from LocalStorage
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [habit, setHabit] = useState(null);
-  const [logs, setLogs] = useState([]);
-  const [nudge, setNudge] = useState('');
-  const [analysis, setAnalysis] = useState('');
-  const [loadingHabit, setLoadingHabit] = useState(true);
+  const [habit, setHabit] = useState(() => {
+    const saved = localStorage.getItem('aura_habit');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [logs, setLogs] = useState(() => {
+    const saved = localStorage.getItem('aura_logs');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [chatMessages, setChatMessages] = useState(() => {
+    const saved = localStorage.getItem('aura_chat');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [nudge, setNudge] = useState(() => {
+    return localStorage.getItem('aura_nudge') || '';
+  });
+  const [analysis, setAnalysis] = useState(() => {
+    return localStorage.getItem('aura_analysis') || '';
+  });
   const [errorMessage, setErrorMessage] = useState('');
   
   // Onboarding Form State
@@ -58,60 +71,43 @@ export default function App() {
   const [submittingLog, setSubmittingLog] = useState(false);
 
   // Chat State
-  const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [sendingChat, setSendingChat] = useState(false);
   const chatBottomRef = useRef(null);
 
-  // Load Initial Data
+  // Trigger Nudge Fetch on first load or when logs change
   useEffect(() => {
-    fetchHabitData();
+    if (habit) {
+      fetchNudge(habit, logs);
+    }
   }, []);
 
-  // Fetch Habit, Logs, and Nudge
-  const fetchHabitData = async () => {
-    setLoadingHabit(true);
-    setErrorMessage('');
+  const fetchNudge = async (currentHabit, currentLogs) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/habit`);
-      if (response.status === 200) {
-        const data = await response.json();
-        setHabit(data);
-        // Fetch logs and nudge since habit exists
-        await fetchLogs(data.id);
-        fetchNudge();
-      } else if (response.status === 404) {
-        // No habit found, needs onboarding
-        setHabit(null);
-      } else {
-        setErrorMessage("Server returned an error status while retrieving habit profile.");
-      }
-    } catch (err) {
-      console.error(err);
-      setErrorMessage("Could not connect to the backend server. Please verify the FastAPI server is running on http://localhost:8000");
-    } finally {
-      setLoadingHabit(false);
-    }
-  };
-
-  const fetchLogs = async (habitId) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/logs`);
-      if (res.ok) {
-        const data = await res.json();
-        setLogs(data);
-      }
-    } catch (err) {
-      console.error("Error fetching logs:", err);
-    }
-  };
-
-  const fetchNudge = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/nudge`);
+      const res = await fetch(`${API_BASE_URL}/nudge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          habit: {
+            name: currentHabit.name,
+            description: currentHabit.description || '',
+            triggers: currentHabit.triggers || '',
+            motivation: currentHabit.motivation || '',
+            target_reduction: currentHabit.target_reduction || ''
+          },
+          recent_logs: currentLogs.map(l => ({
+            date: l.date,
+            metric_value: Number(l.metric_value),
+            craving_level: Number(l.craving_level),
+            slip_up: l.slip_up,
+            notes: l.notes || ''
+          }))
+        })
+      });
       if (res.ok) {
         const data = await res.json();
         setNudge(data.nudge);
+        localStorage.setItem('aura_nudge', data.nudge);
       }
     } catch (err) {
       console.error("Error fetching nudge:", err);
@@ -119,31 +115,40 @@ export default function App() {
   };
 
   const fetchAnalysis = async () => {
+    if (!habit) return;
     setAnalysis('');
     setErrorMessage('');
     try {
-      const res = await fetch(`${API_BASE_URL}/analysis`);
+      const res = await fetch(`${API_BASE_URL}/analysis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          habit: {
+            name: habit.name,
+            description: habit.description || '',
+            triggers: habit.triggers || '',
+            motivation: habit.motivation || '',
+            target_reduction: habit.target_reduction || ''
+          },
+          recent_logs: logs.map(l => ({
+            date: l.date,
+            metric_value: Number(l.metric_value),
+            craving_level: Number(l.craving_level),
+            slip_up: l.slip_up,
+            notes: l.notes || ''
+          }))
+        })
+      });
       if (res.ok) {
         const data = await res.json();
         setAnalysis(data.analysis);
+        localStorage.setItem('aura_analysis', data.analysis);
       } else {
         const errData = await res.json();
         setErrorMessage(errData.detail || "Failed to generate analysis.");
       }
     } catch (err) {
-      setErrorMessage("Network error generating weekly assessment.");
-    }
-  };
-
-  const fetchChatHistory = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/chat/history`);
-      if (res.ok) {
-        const data = await res.json();
-        setChatMessages(data);
-      }
-    } catch (err) {
-      console.error("Error fetching chat history:", err);
+      setErrorMessage("Network error generating weekly assessment from AI.");
     }
   };
 
@@ -154,86 +159,92 @@ export default function App() {
     }
   }, [chatMessages, activeTab]);
 
-  // Load chat history when switching to chat tab
+  // Load analysis when switching to analysis tab
   useEffect(() => {
-    if (activeTab === 'chat' && habit) {
-      fetchChatHistory();
-    } else if (activeTab === 'analysis' && habit) {
+    if (activeTab === 'analysis' && habit) {
       fetchAnalysis();
     }
-  }, [activeTab, habit]);
+  }, [activeTab]);
 
   // Action Handlers
-  const handleOnboardHabit = async (e) => {
+  const handleOnboardHabit = (e) => {
     e.preventDefault();
     if (!newHabitName.trim()) return;
     setSubmittingHabit(true);
     setErrorMessage('');
     try {
-      const res = await fetch(`${API_BASE_URL}/habit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newHabitName,
-          description: newHabitDesc,
-          triggers: newHabitTriggers,
-          motivation: newHabitMotiv,
-          target_reduction: newHabitTarget
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setHabit(data);
-        setActiveTab('dashboard');
-        // Clean onboarding states
-        setNewHabitName('');
-        setNewHabitDesc('');
-        setNewHabitTriggers('');
-        setNewHabitMotiv('');
-        setNewHabitTarget('');
-        fetchNudge();
-      } else {
-        const err = await res.json();
-        setErrorMessage(err.detail || "Failed to save habit onboarding parameters.");
-      }
+      const habitData = {
+        name: newHabitName,
+        description: newHabitDesc,
+        triggers: newHabitTriggers,
+        motivation: newHabitMotiv,
+        target_reduction: newHabitTarget
+      };
+      
+      setHabit(habitData);
+      localStorage.setItem('aura_habit', JSON.stringify(habitData));
+      
+      // Clean chat and logs on new onboarding
+      setLogs([]);
+      setChatMessages([]);
+      localStorage.removeItem('aura_logs');
+      localStorage.removeItem('aura_chat');
+      localStorage.removeItem('aura_analysis');
+      localStorage.removeItem('aura_nudge');
+      
+      setNewHabitName('');
+      setNewHabitDesc('');
+      setNewHabitTriggers('');
+      setNewHabitMotiv('');
+      setNewHabitTarget('');
+      setActiveTab('dashboard');
+      
+      fetchNudge(habitData, []);
     } catch (err) {
-      setErrorMessage("Failed to send onboarding parameters to backend.");
+      setErrorMessage("Failed to save habit onboarding parameters.");
     } finally {
       setSubmittingHabit(false);
     }
   };
 
-  const handlePostLog = async (e) => {
+  const handlePostLog = (e) => {
     e.preventDefault();
     setSubmittingLog(true);
     setErrorMessage('');
     try {
-      const res = await fetch(`${API_BASE_URL}/logs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: logDate,
-          metric_value: Number(logMetric),
-          craving_level: Number(logCraving),
-          slip_up: logSlipUp,
-          notes: logNotes
-        })
-      });
-      if (res.ok) {
-        await fetchLogs(habit.id);
-        fetchNudge();
-        // Reset log inputs except date
-        setLogMetric(0);
-        setLogCraving(5);
-        setLogSlipUp(false);
-        setLogNotes('');
-        setActiveTab('dashboard');
+      const newLog = {
+        date: logDate,
+        metric_value: Number(logMetric),
+        craving_level: Number(logCraving),
+        slip_up: logSlipUp,
+        notes: logNotes
+      };
+
+      // Check if entry for date already exists
+      const dateExistsIndex = logs.findIndex(l => l.date === logDate);
+      let updatedLogs = [...logs];
+      if (dateExistsIndex >= 0) {
+        updatedLogs[dateExistsIndex] = newLog;
       } else {
-        const err = await res.json();
-        setErrorMessage(err.detail || "Validation or database write failed.");
+        updatedLogs.push(newLog);
       }
+
+      // Sort logs chronologically
+      updatedLogs.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      setLogs(updatedLogs);
+      localStorage.setItem('aura_logs', JSON.stringify(updatedLogs));
+
+      fetchNudge(habit, updatedLogs);
+      
+      // Reset form variables
+      setLogMetric(0);
+      setLogCraving(5);
+      setLogSlipUp(false);
+      setLogNotes('');
+      setActiveTab('dashboard');
     } catch (err) {
-      setErrorMessage("Network error submitting daily log check-in.");
+      setErrorMessage("Local storage write failed.");
     } finally {
       setSubmittingLog(false);
     }
@@ -244,14 +255,17 @@ export default function App() {
     setSendingChat(true);
     setErrorMessage('');
 
-    // Optimistically add user message to chat UI
-    const optimisticUserMsg = {
+    // Save user's message locally first
+    const userMsg = {
       id: Date.now(),
       sender: 'user',
       message: messageText,
       timestamp: new Date().toISOString()
     };
-    setChatMessages(prev => [...prev, optimisticUserMsg]);
+    
+    const updatedMessages = [...chatMessages, userMsg];
+    setChatMessages(updatedMessages);
+    localStorage.setItem('aura_chat', JSON.stringify(updatedMessages));
     setChatInput('');
 
     try {
@@ -259,13 +273,32 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          habit: {
+            name: habit.name,
+            description: habit.description || '',
+            triggers: habit.triggers || '',
+            motivation: habit.motivation || '',
+            target_reduction: habit.target_reduction || ''
+          },
+          history: updatedMessages.slice(-10).map(m => ({
+            sender: m.sender,
+            message: m.message
+          })),
           message: messageText,
           is_sos: isSos
         })
       });
       if (res.ok) {
         const botResponse = await res.json();
-        setChatMessages(prev => [...prev, botResponse]);
+        const coachMsg = {
+          id: Date.now() + 1,
+          sender: 'coach',
+          message: botResponse.message,
+          timestamp: botResponse.timestamp
+        };
+        const finalMessages = [...updatedMessages, coachMsg];
+        setChatMessages(finalMessages);
+        localStorage.setItem('aura_chat', JSON.stringify(finalMessages));
       } else {
         const errData = await res.json();
         setErrorMessage(errData.detail || "Error receiving response from Aura.");
@@ -282,26 +315,21 @@ export default function App() {
     handleSendChat("EMERGENCY: I am experiencing an intense, overwhelming urge right now. Help me get through it.", true);
   };
 
-  const handleResetData = async () => {
+  const handleResetData = () => {
     if (!confirm("Are you sure you want to delete all streaks, logs, chat history, and habit settings? This starts the application fresh.")) {
       return;
     }
-    setErrorMessage('');
-    try {
-      const res = await fetch(`${API_BASE_URL}/reset`, { method: 'POST' });
-      if (res.ok) {
-        setHabit(null);
-        setLogs([]);
-        setNudge('');
-        setAnalysis('');
-        setChatMessages([]);
-        setActiveTab('dashboard');
-      } else {
-        setErrorMessage("Server failed to reset database tables.");
-      }
-    } catch (err) {
-      setErrorMessage("Network error attempting application reset.");
-    }
+    setHabit(null);
+    setLogs([]);
+    setNudge('');
+    setAnalysis('');
+    setChatMessages([]);
+    localStorage.removeItem('aura_habit');
+    localStorage.removeItem('aura_logs');
+    localStorage.removeItem('aura_chat');
+    localStorage.removeItem('aura_nudge');
+    localStorage.removeItem('aura_analysis');
+    setActiveTab('dashboard');
   };
 
   // Streak calculations
@@ -349,16 +377,6 @@ export default function App() {
       return part;
     });
   };
-
-  // Onboarding UI Guard
-  if (loadingHabit) {
-    return (
-      <div style={{ display: 'flex', height: '100vh', width: '100vw', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0a0b10', gap: '16px' }}>
-        <RefreshCw className="animate-spin text-purple-500" size={32} />
-        <span style={{ fontSize: '18px', fontWeight: '500', color: '#9ca3af' }}>Connecting to Aura Core...</span>
-      </div>
-    );
-  }
 
   return (
     <div className="app-container">
@@ -645,8 +663,8 @@ export default function App() {
                       </div>
                     ) : (
                       <div className="logs-list">
-                        {[...logs].reverse().slice(0, 5).map(log => (
-                          <div key={log.id} className="log-item">
+                        {[...logs].reverse().slice(0, 5).map((log, idx) => (
+                          <div key={idx} className="log-item">
                             <div>
                               <div style={{ fontWeight: '700', fontSize: '14px' }}>{log.date}</div>
                               <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -803,7 +821,7 @@ export default function App() {
                   {logs.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
                       <Calendar size={36} style={{ marginBottom: '12px', opacity: 0.5 }} />
-                      <p>No logged entries found in database.</p>
+                      <p>No logged entries found.</p>
                     </div>
                   ) : (
                     <div style={{ overflowX: 'auto' }}>
@@ -818,8 +836,8 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody>
-                          {logs.map(log => (
-                            <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                          {logs.map((log, idx) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                               <td style={{ padding: '14px 16px', fontWeight: '600' }}>{log.date}</td>
                               <td style={{ padding: '14px 16px' }}>{log.metric_value}</td>
                               <td style={{ padding: '14px 16px' }}>
@@ -999,7 +1017,7 @@ export default function App() {
             <header style={{ marginBottom: '28px' }}>
               <h2>Application Settings & Evaluation Panel</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-                Configure local preferences or wipe simulated test databases to perform a complete end-to-end evaluation check.
+                Configure local preferences or wipe simulated databases to perform a complete end-to-end evaluation check.
               </p>
             </header>
 
@@ -1007,8 +1025,8 @@ export default function App() {
               <div>
                 <h3 style={{ fontSize: '16px', color: 'var(--text-primary)', marginBottom: '8px' }}>System Diagnosis</h3>
                 <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-                  <p>Backend Connection: <strong style={{ color: 'var(--success)' }}>Online (http://localhost:8000)</strong></p>
-                  <p>Database: <strong>SQLite (local aura.db file)</strong></p>
+                  <p>Backend Connection: <strong style={{ color: 'var(--success)' }}>Online (stateless proxy)</strong></p>
+                  <p>Database: <strong>Stateless Local Storage (No cloud database required)</strong></p>
                   <p>Habits Registered: <strong>{habit ? `1 (${habit.name})` : "None (Pending setup)"}</strong></p>
                   <p>Logs Count: <strong>{logs.length} entries</strong></p>
                 </div>
@@ -1017,7 +1035,7 @@ export default function App() {
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
                 <h3 style={{ fontSize: '16px', color: 'var(--danger)', marginBottom: '8px' }}>Reset Simulation Data</h3>
                 <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
-                  Performing a reset deletes all rows from SQLite tables (`habits`, `logs`, `chat_messages`). 
+                  Performing a reset deletes all local browser caches (`aura_habit`, `aura_logs`, `aura_chat`). 
                   Use this to test the initial habit profile onboarding form flow.
                 </p>
                 <button onClick={handleResetData} className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

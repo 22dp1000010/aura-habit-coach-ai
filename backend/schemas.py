@@ -1,66 +1,45 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from typing import Optional, List
-from datetime import datetime
 
-# Habit Schemas
-class HabitBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100, description="The habit to change")
-    description: Optional[str] = Field(None, max_length=500, description="Short summary/description")
-    triggers: Optional[str] = Field(None, max_length=500, description="Identified triggers")
-    motivation: Optional[str] = Field(None, max_length=500, description="Reasons for wanting to break the habit")
-    target_reduction: Optional[str] = Field(None, max_length=100, description="Reduction goals, e.g., '30 mins/day'")
+class HabitSchema(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    triggers: Optional[str] = Field(None, max_length=500)
+    motivation: Optional[str] = Field(None, max_length=500)
+    target_reduction: Optional[str] = Field(None, max_length=100)
 
-class HabitCreate(HabitBase):
-    pass
-
-class HabitResponse(HabitBase):
-    id: int
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-# Log Schemas
-class LogBase(BaseModel):
-    date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="YYYY-MM-DD format")
-    metric_value: float = Field(..., ge=0.0, description="E.g., quantity of habit consumed or time spent in minutes")
-    craving_level: int = Field(..., ge=1, le=10, description="Craving scale from 1 (lowest) to 10 (highest)")
-    slip_up: bool = Field(False, description="Did the user experience a slip up?")
+class LogSchema(BaseModel):
+    date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
+    metric_value: float = Field(..., ge=0.0)
+    craving_level: int = Field(..., ge=1, le=10)
+    slip_up: bool = Field(False)
     notes: Optional[str] = Field(None, max_length=1000)
 
-class LogCreate(LogBase):
-    pass
-
-class LogResponse(LogBase):
-    id: int
-    habit_id: int
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-# Chat Message Schemas
-class ChatMessageBase(BaseModel):
+class MessageSchema(BaseModel):
     sender: str = Field(..., pattern="^(user|coach)$")
     message: str = Field(..., min_length=1)
 
-class ChatMessageCreate(ChatMessageBase):
-    pass
-
-class ChatMessageResponse(ChatMessageBase):
-    id: int
-    habit_id: int
-    timestamp: datetime
-
-    class Config:
-        from_attributes = True
-
-# Chat request schema
+# Stateless Request Payloads
 class ChatRequest(BaseModel):
+    habit: HabitSchema
+    history: List[MessageSchema]
     message: str = Field(..., min_length=1)
-    is_sos: bool = Field(False, description="Whether the emergency/SOS urge mode is triggered")
+    is_sos: bool = Field(False)
 
-# Nudge & Insights Schemas
+class NudgeRequest(BaseModel):
+    habit: HabitSchema
+    recent_logs: List[LogSchema]
+
+class AnalysisRequest(BaseModel):
+    habit: HabitSchema
+    recent_logs: List[LogSchema]
+
+# Responses
+class ChatMessageResponse(BaseModel):
+    sender: str
+    message: str
+    timestamp: str
+
 class NudgeResponse(BaseModel):
     nudge: str
 
