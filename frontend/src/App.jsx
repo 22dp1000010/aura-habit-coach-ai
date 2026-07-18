@@ -385,7 +385,7 @@ export default function App() {
       <aside className="sidebar">
         <div className="logo-container">
           <div className="logo-icon">
-            <Brain size={20} color="white" />
+            <Brain size={20} color="white" aria-hidden="true" />
           </div>
           <span className="logo-text">AURA AI</span>
         </div>
@@ -397,7 +397,7 @@ export default function App() {
                 onClick={() => setActiveTab('dashboard')} 
                 className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
               >
-                <Activity size={18} />
+                <Activity size={18} aria-hidden="true" />
                 Dashboard
               </button>
 
@@ -405,7 +405,7 @@ export default function App() {
                 onClick={() => setActiveTab('log')} 
                 className={`nav-item ${activeTab === 'log' ? 'active' : ''}`}
               >
-                <PlusCircle size={18} />
+                <PlusCircle size={18} aria-hidden="true" />
                 Daily Check-in
               </button>
 
@@ -413,7 +413,7 @@ export default function App() {
                 onClick={() => setActiveTab('history')} 
                 className={`nav-item ${activeTab === 'history' ? 'active' : ''}`}
               >
-                <History size={18} />
+                <History size={18} aria-hidden="true" />
                 History & Logs
               </button>
 
@@ -421,7 +421,7 @@ export default function App() {
                 onClick={() => setActiveTab('chat')} 
                 className={`nav-item ${activeTab === 'chat' ? 'active' : ''}`}
               >
-                <MessageSquare size={18} />
+                <MessageSquare size={18} aria-hidden="true" />
                 Aura Coach
               </button>
 
@@ -429,13 +429,13 @@ export default function App() {
                 onClick={() => setActiveTab('analysis')} 
                 className={`nav-item ${activeTab === 'analysis' ? 'active' : ''}`}
               >
-                <TrendingUp size={18} />
+                <TrendingUp size={18} aria-hidden="true" />
                 AI Analysis
               </button>
             </>
           ) : (
             <button className="nav-item active">
-              <Sparkles size={18} />
+              <Sparkles size={18} aria-hidden="true" />
               Setup Habit
             </button>
           )}
@@ -445,7 +445,7 @@ export default function App() {
             className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
             style={{ marginTop: 'auto' }}
           >
-            <Settings size={18} />
+            <Settings size={18} aria-hidden="true" />
             Settings & Reset
           </button>
         </nav>
@@ -453,7 +453,7 @@ export default function App() {
         {habit && (
           <div className="sidebar-footer">
             <button onClick={triggerSOS} className="sos-trigger">
-              <AlertTriangle size={16} />
+              <AlertTriangle size={16} aria-hidden="true" />
               SOS: URGENT URGE
             </button>
           </div>
@@ -477,9 +477,9 @@ export default function App() {
             alignItems: 'center',
             gap: '12px'
           }} className="animate-fade">
-            <AlertTriangle size={20} />
+            <AlertTriangle size={20} aria-hidden="true" />
             <div style={{ flexGrow: 1 }}>{errorMessage}</div>
-            <button onClick={() => setErrorMessage('')} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+            <button aria-label="Dismiss error message" onClick={() => setErrorMessage('')} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
           </div>
         )}
 
@@ -508,8 +508,9 @@ export default function App() {
 
             <form onSubmit={handleOnboardHabit}>
               <div className="form-group">
-                <label className="form-label">WHAT HABIT DO YOU WANT TO OVERCOME?</label>
+                <label htmlFor="onboard-habit-name" className="form-label">WHAT HABIT DO YOU WANT TO OVERCOME?</label>
                 <input 
+                  id="onboard-habit-name"
                   type="text" 
                   className="form-input" 
                   placeholder="e.g. Doomscrolling Twitter, Late night snacking, Nail biting..." 
@@ -520,8 +521,9 @@ export default function App() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">BRIEF DESCRIPTION</label>
+                <label htmlFor="onboard-habit-desc" className="form-label">BRIEF DESCRIPTION</label>
                 <textarea 
+                  id="onboard-habit-desc"
                   className="form-input" 
                   rows={2}
                   placeholder="Briefly state when or how this habit manifests."
@@ -531,8 +533,9 @@ export default function App() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">CORE TRIGGERS (WHAT SPARKS THE URGE?)</label>
+                <label htmlFor="onboard-habit-triggers" className="form-label">CORE TRIGGERS (WHAT SPARKS THE URGE?)</label>
                 <input 
+                  id="onboard-habit-triggers"
                   type="text" 
                   className="form-input" 
                   placeholder="e.g. Boredom, stress, bedtime, notifications, fatigue..." 
@@ -542,8 +545,9 @@ export default function App() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">YOUR MOTIVATION (WHY STRIVE TO BREAK IT?)</label>
+                <label htmlFor="onboard-habit-motiv" className="form-label">YOUR MOTIVATION (WHY STRIVE TO BREAK IT?)</label>
                 <input 
+                  id="onboard-habit-motiv"
                   type="text" 
                   className="form-input" 
                   placeholder="e.g. Improve deep sleep, regain productivity, lung health..." 
@@ -553,8 +557,9 @@ export default function App() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">REDUCTION TARGET / OBJECTIVE</label>
+                <label htmlFor="onboard-habit-target" className="form-label">REDUCTION TARGET / OBJECTIVE</label>
                 <input 
+                  id="onboard-habit-target"
                   type="text" 
                   className="form-input" 
                   placeholder="e.g. Max 30 mins/day, zero cigarettes, no snacking after 9PM..." 
@@ -726,8 +731,9 @@ export default function App() {
 
                 <form onSubmit={handlePostLog} className="glass-card">
                   <div className="form-group">
-                    <label className="form-label">LOGGING DATE</label>
+                    <label htmlFor="log-date" className="form-label">LOGGING DATE</label>
                     <input 
+                      id="log-date"
                       type="date" 
                       className="form-input" 
                       value={logDate}
@@ -737,8 +743,9 @@ export default function App() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">METRIC MEASUREMENT (e.g. Minutes of Screen Time, Number of Cigarettes)</label>
+                    <label htmlFor="log-metric" className="form-label">METRIC MEASUREMENT (e.g. Minutes of Screen Time, Number of Cigarettes)</label>
                     <input 
+                      id="log-metric"
                       type="number" 
                       className="form-input" 
                       min="0"
@@ -751,9 +758,10 @@ export default function App() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">CRAVING INTENSITY (1 = MINIMAL, 10 = SEVERE)</label>
+                    <label htmlFor="log-craving" className="form-label">CRAVING INTENSITY (1 = MINIMAL, 10 = SEVERE)</label>
                     <div className="slider-container">
                       <input 
+                        id="log-craving"
                         type="range" 
                         min="1" 
                         max="10" 
@@ -766,27 +774,30 @@ export default function App() {
                   </div>
 
                   <div className="form-group">
-                    <div className="switch-container" onClick={() => setLogSlipUp(!logSlipUp)}>
+                    <div className="switch-container" style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                       <input 
                         type="checkbox" 
+                        id="log-slipup"
                         className="switch-input" 
                         checked={logSlipUp}
-                        onChange={() => {}} // Controlled by parent div click
+                        onChange={(e) => setLogSlipUp(e.target.checked)}
+                        style={{ marginTop: '4px' }}
                       />
-                      <div>
-                        <div style={{ fontWeight: '700', fontSize: '13.5px', color: logSlipUp ? 'var(--danger)' : 'var(--text-primary)' }}>
+                      <label htmlFor="log-slipup" style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        <span style={{ display: 'block', fontWeight: '700', fontSize: '13.5px', color: logSlipUp ? 'var(--danger)' : 'var(--text-primary)' }}>
                           I experienced a Slip-up today
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        </span>
+                        <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                           Toggle this if you engaged in the habit you're trying to break.
-                        </div>
-                      </div>
+                        </span>
+                      </label>
                     </div>
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">REFLECTIONS & TRIGGERS OBSERVED</label>
+                    <label htmlFor="log-notes" className="form-label">REFLECTIONS & TRIGGERS OBSERVED</label>
                     <textarea 
+                      id="log-notes"
                       className="form-input" 
                       rows={3}
                       placeholder="e.g. Bored at 4pm after meetings. Felt a sudden trigger. Managed to breathe through it."
@@ -964,6 +975,8 @@ export default function App() {
                 <div className="chat-input-area">
                   <input 
                     type="text" 
+                    id="chat-message-input"
+                    aria-label="Reflect on your trigger, talk about cravings, or express stress to Aura Coach"
                     className="form-input" 
                     placeholder="Reflect on your trigger, talk about cravings, or express stress..."
                     value={chatInput}
@@ -977,6 +990,7 @@ export default function App() {
                     onClick={() => handleSendChat(chatInput)}
                     className="btn btn-primary"
                     disabled={sendingChat || !chatInput.trim()}
+                    aria-label="Send message to Aura Coach"
                   >
                     Send
                   </button>

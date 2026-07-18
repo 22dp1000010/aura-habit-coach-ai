@@ -2,7 +2,7 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime
+from datetime import datetime, timezone
 
 from . import schemas, ai
 
@@ -75,7 +75,7 @@ async def send_chat_message(
     return schemas.ChatMessageResponse(
         sender="coach",
         message=ai_response,
-        timestamp=datetime.utcnow().isoformat()
+        timestamp=datetime.now(timezone.utc).isoformat()
     )
 
 @app.post("/api/nudge", response_model=schemas.NudgeResponse)
