@@ -4,7 +4,12 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, D
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./aura.db")
+if os.environ.get("VERCEL") == "1":
+    default_db = "sqlite:////tmp/aura.db"
+else:
+    default_db = "sqlite:///./aura.db"
+
+DATABASE_URL = os.environ.get("DATABASE_URL", default_db)
 
 engine = create_engine(
     DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
