@@ -4,7 +4,7 @@ Aura is a Generative AI-powered web application designed to help users identify,
 
 By combining daily tracking logs with Cognitive Behavioral Therapy (CBT) and Acceptance and Commitment Therapy (ACT) principles delivered through a Groq-powered AI coach, Aura empowers sustained behavior change.
 
-🚀 **Deployed Application:** [https://[YOUR-VERCEL-DEPLOYED-APP-URL].vercel.app](https://[YOUR-VERCEL-DEPLOYED-APP-URL].vercel.app)
+🚀 **Deployed Application:** [https://aura-habit-coach-ai.vercel.app/](https://aura-habit-coach-ai.vercel.app/).
 
 ---
 
