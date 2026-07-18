@@ -3,12 +3,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone
+from typing import Dict, Any
 
 from . import schemas, ai
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Check Groq API configuration
+    """
+    Handles startup sequence of the FastAPI application by validating 
+    Groq API key configurations.
+    """
     api_key = ai.get_api_key()
     if not api_key:
         print("[WARNING] GROQ_API_KEY is not set. GenAI capabilities will fail at request time.")
@@ -39,7 +43,10 @@ app.add_middleware(
 
 # Endpoints
 @app.get("/api/health")
-async def health_check():
+async def health_check() -> Dict[str, str]:
+    """
+    Diagnoses backend API connectivity and status of third-party AI integrations.
+    """
     api_key = ai.get_api_key()
     ai_status = "configured" if api_key else "missing"
     return {
@@ -51,7 +58,11 @@ async def health_check():
 @app.post("/api/chat", response_model=schemas.ChatMessageResponse)
 async def send_chat_message(
     chat_req: schemas.ChatRequest
-):
+) -> schemas.ChatMessageResponse:
+    """
+    Sends the user's latest conversation input and context to the AI coach 
+    and retrieves a CBT-based grounding or guidance response.
+    """
     if not ai.get_api_key():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -79,7 +90,10 @@ async def send_chat_message(
     )
 
 @app.post("/api/nudge", response_model=schemas.NudgeResponse)
-async def get_daily_nudge(nudge_req: schemas.NudgeRequest):
+async def get_daily_nudge(nudge_req: schemas.NudgeRequest) -> schemas.NudgeResponse:
+    """
+    Evaluates tracking history to yield a short, encouraging daily nudge sentence.
+    """
     if not ai.get_api_key():
         return schemas.NudgeResponse(nudge="Aura Coach is offline. Please set GROQ_API_KEY on Vercel to get daily nudges.")
         
@@ -88,7 +102,11 @@ async def get_daily_nudge(nudge_req: schemas.NudgeRequest):
     return schemas.NudgeResponse(nudge=nudge_text)
 
 @app.post("/api/analysis", response_model=schemas.AnalysisResponse)
-async def get_weekly_analysis(analysis_req: schemas.AnalysisRequest):
+async def get_weekly_analysis(analysis_req: schemas.AnalysisRequest) -> schemas.AnalysisResponse:
+    """
+    Examines all check-in metrics and reflections to compile a weekly 
+    behavioral review report.
+    """
     if not ai.get_api_key():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

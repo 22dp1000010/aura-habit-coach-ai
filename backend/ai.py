@@ -1,15 +1,23 @@
 import os
 import httpx
 from typing import List, Dict, Any
+from . import schemas
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "llama-3.1-8b-instant"
 
 def get_api_key() -> str:
+    """
+    Retrieves the trimmed GROQ_API_KEY from environment variables.
+    """
     key = os.environ.get("GROQ_API_KEY", "")
     return key.strip()
 
 async def check_api_key_valid() -> bool:
+    """
+    Sends a test request to Groq serverless model to verify if the configured 
+    API key is authenticated and active.
+    """
     api_key = get_api_key()
     if not api_key:
         return False
@@ -28,10 +36,26 @@ async def check_api_key_valid() -> bool:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.post(GROQ_API_URL, json=payload, headers=headers)
             return response.status_code == 200
+    except (httpx.HTTPError, httpx.TimeoutException):
+        return False
     except Exception:
         return False
 
 async def fetch_groq_completion(messages: List[Dict[str, str]], temperature: float = 0.7) -> str:
+    """
+    Executes a chat completion query against the Groq API.
+    
+    Args:
+        messages: A list of chat message dictionaries containing roles and contents.
+        temperature: Controls completion creativity (0.0 = deterministic, 1.0 = creative).
+        
+    Returns:
+        The text response content from the AI model.
+        
+    Raises:
+        ValueError: If the Groq API key is missing.
+        Exception: If the server returns an error code status.
+    """
     api_key = get_api_key()
     if not api_key:
         raise ValueError("GROQ_API_KEY is not configured in the environment variables.")
@@ -56,7 +80,25 @@ async def fetch_groq_completion(messages: List[Dict[str, str]], temperature: flo
         result = response.json()
         return result["choices"][0]["message"]["content"].strip()
 
-async def get_coaching_response(habit: Any, history: List[Any], user_message: str, is_sos: bool = False) -> str:
+async def get_coaching_response(
+    habit: schemas.HabitSchema, 
+    history: List[schemas.MessageSchema], 
+    user_message: str, 
+    is_sos: bool = False
+) -> str:
+    """
+    Generates a personalized CBT coaching response based on the active habit settings,
+    recent message dialog strings, and whether the emergency grounding SOS switch is activated.
+    
+    Args:
+        habit: Pydantic Habit schema containing settings (triggers, target reductions).
+        history: Conversation message schema records representing historical context.
+        user_message: Latest user request or message string.
+        is_sos: Triggers brief somatic grounding guidelines when active.
+        
+    Returns:
+        Empathetic, action-oriented behavioral advice from Aura.
+    """
     # Build System Prompt
     system_prompt = (
         "You are Aura, an empathetic, supportive, and scientifically-grounded behavioral coach specializing "
@@ -102,7 +144,17 @@ async def get_coaching_response(habit: Any, history: List[Any], user_message: st
     
     return await fetch_groq_completion(messages, temperature=0.7)
 
-async def generate_nudge(habit: Any, recent_logs: List[Any]) -> str:
+async def generate_nudge(habit: schemas.HabitSchema, recent_logs: List[schemas.LogSchema]) -> str:
+    """
+    Analyzes historical habit metrics to draft a single tailored nudge sentence.
+    
+    Args:
+        habit: User habit properties.
+        recent_logs: Log schema entries covering the recent period.
+        
+    Returns:
+        A highly targeted motivating nudge (max 40 words).
+    """
     system_prompt = (
         "You are Aura, a supportive habit coach. Your job is to output a single, highly tailored, "
         "daily nudge (exactly 1-2 sentences, maximum 40 words) for a user trying to overcome '{habit_name}'."
@@ -134,10 +186,20 @@ async def generate_nudge(habit: Any, recent_logs: List[Any]) -> str:
     try:
         # Low temperature for highly focused nudge
         return await fetch_groq_completion(messages, temperature=0.5)
-    except Exception as e:
+    except Exception:
         return f"Stay strong! Every step toward breaking {habit.name} counts. Keep tracking your progress."
 
-async def generate_analysis(habit: Any, recent_logs: List[Any]) -> str:
+async def generate_analysis(habit: schemas.HabitSchema, recent_logs: List[schemas.LogSchema]) -> str:
+    """
+    Processes all logs to formulate a comprehensive weekly behavioral assessment report.
+    
+    Args:
+        habit: User habit properties.
+        recent_logs: Entire set of logged entries.
+        
+    Returns:
+        Structured Markdown assessment of trigger trends and tactical adjustments.
+    """
     system_prompt = (
         "You are Aura, an analytical behavior expert specializing in habit architecture and CBT. "
         "Your task is to write a comprehensive weekly progress analysis and behavioral review based "
